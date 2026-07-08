@@ -1,0 +1,42 @@
+{
+  "summary": "Focused verification of the deployment health-check fix. GET /health and GET /api/health both return 200 with {status:'ok'} on the pod's internal port 8001 (which is what the K8s ingress liveness/readiness probes actually hit). Backend startup shows 'Seed complete' 5x with no crash — the try/except around seed_all() works. Existing critical endpoints (login, dashboard stats, products, configure) all still 200, and the frontend /login still returns HTML. 9/9 tests pass.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "verified_endpoints": [
+    "GET http://localhost:8001/health -> 200 {\"status\":\"ok\"} (K8s probe path)",
+    "GET http://localhost:8001/api/health -> 200 {\"status\":\"ok\"}",
+    "GET https://logic-led-config.preview.emergentagent.com/api/health -> 200 {\"status\":\"ok\"} (via ingress)",
+    "POST /api/auth/login (admin@logic.com/admin123) -> 200 with access_token",
+    "GET /api/dashboard/stats (with cookie auth) -> 200",
+    "GET /api/products -> 200 list (>=1 item)",
+    "POST /api/configure -> 200 with wall calc payload",
+    "GET https://logic-led-config.preview.emergentagent.com/login -> 200 HTML"
+  ],
+  "startup_verification": "backend.err.log tail shows 5 consecutive 'INFO: Application startup complete' preceded by 'INFO: Seed complete' — try/except around seed_all() confirmed working; no crash on restart.",
+  "note_on_public_health_url": "Externally, https://<preview>/health returns 200 but serves the frontend React index.html because the ingress only routes /api/* to backend. This is expected — K8s liveness/readiness probes target the container port (8001) directly where /health correctly returns JSON {status:'ok'}. The original deployment failure (repeated 404 on /health) is fully resolved.",
+  "test_report_links": [
+    "/app/backend/tests/test_health_and_smoke.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py uses deprecated @app.on_event('startup'); recommend migrating to FastAPI lifespan context manager (non-blocking, but will break in future FastAPI versions).",
+    "The public URL /health serves the frontend (ingress rule limitation). Not a bug for K8s probes (they use pod port), but if any external monitor pings /health via ingress it will get HTML — consider aliasing under /api/health for external checks (already added)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_health_and_smoke.py (new focused test file)"
+  ],
+  "success_rate": {"backend": "100% (9/9)", "frontend": "not tested (skipped per request)"},
+  "test_credentials": "admin@logic.com / admin123 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "None — used existing seeded data (8 products, 4 customers, 3 partners).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "The health-check deployment fix is fully verified. AI budget issue from iteration_1 (POST /api/ai/recommend returning 500 due to EMERGENT_LLM_KEY budget=0) is still open but out of scope for this iteration."
+}

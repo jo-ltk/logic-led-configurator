@@ -1,0 +1,67 @@
+{
+  "summary": "Iteration 5 comprehensive backend + frontend verification. Backend pytest: 19/20 PASS (95%). All Indian MCB combos correctly use only 6/10/16/20/32 A ratings (tested 1-40 kW single/three-phase, no 40/50/63 A rating ever appears). Network engineering returns 'Vertical' loop with home_runs=cabinets_x (or 2×cabinets_x when col-pixels exceed port capacity) for indoor, and 'Horizontal' with home_runs=cabinets_y (or 2×cabinets_y) for outdoor. Controllers CRUD (POST/PUT/DELETE) works correctly and new controllers appear in /api/controllers list. Quote creation accepts new optional fields (power_data, network_data, controller_data, render_file_id, cover_intro, pdf_sections) and GET returns them intact. Only failing test is GET /api/quotes/{id}/pdf when quote has partial power_data attached — throws 500 due to unsafe f-string format on None. Frontend: /configurator has ALL requested testids (pitch-select, mode-dimensions/matrix/resolution-btn, env-indoor/outdoor-btn, width/height-input, controller-select, undo-btn, redo-btn, grand-total-display, item-desc/qty/price/remove-N). BOM undo verified working (grand total went 25L→110L on qty change, then 25L on undo). /engineering auto-loads config from localStorage (green banner 'Auto-loaded from configurator: LOGIC Transparent P3.9 · 4×5 · 4 kW'), power tab has 10 export-toggle-{key} checkboxes and shows MCB '1 × 32A', RCCB 25A/30mA, 2.5 sqmm cable. Network tab shows Matrix 4×5, Resolution 1333×833 px, Total Pixels 1,110,389, looping strategy VERTICAL with 4 home runs. Structural tab redesigned with visual mount cards (wall_mount/hanging/floor_stand). /controllers page: new-controller-btn opens New Controller dialog with model/class/max_pixels/output_ports/pixels_per_port/price/features fields + save-controller-btn; edit-controller-{model} testid present on each existing controller card.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "GET /api/quotes/{qid}/pdf", "issue": "Returns 500 TypeError 'unsupported format string passed to NoneType.__format__' at pdf_gen.py:185 — power_data monthly_cost_inr is None when quote has partial power_data attached. Uses `f\"₹ {power.get('monthly_cost_inr'):,.0f}\"` which explodes on None. Same fragility risk on lines 172-186 (voltage_drop_v, current_max_a, ups_kva, etc.) when partial data attached from UI.", "priority": "HIGH"}
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "verified_endpoints": [
+    "POST /api/engineering/power kw=2 single → mcb '1 × 16A' (Indian standard)",
+    "POST /api/engineering/power kw=10 single → mcb combo uses only 32A (2 × 32A)",
+    "POST /api/engineering/power kw=25 three → voltage 400V, mcb rating ∈ {6,10,16,20,32}",
+    "Wide sweep 1-40 kW (both phases) → 0 occurrences of 40A/50A/63A in mcb_combo",
+    "POST /api/engineering/network indoor 8×5 → looping_strategy='Vertical', home_runs ∈ {8,16}",
+    "POST /api/engineering/network indoor 5×20 with pixels_per_cabinet=200000 → 'Vertical', home_runs=10 (5×2 split)",
+    "POST /api/engineering/network outdoor 10×4 → looping_strategy='Horizontal', home_runs ∈ {4,8}",
+    "POST /api/engineering/network outdoor 20×3 with pixels_per_cabinet=200000 → 'Horizontal', home_runs=6 (3×2 split)",
+    "POST /api/controllers → creates new controller (returns id, model, class, max_pixels, output_ports, pixels_per_port, price)",
+    "PUT /api/controllers/{id} → updates price + output_ports, changes persist",
+    "DELETE /api/controllers/{id} → removes from list",
+    "POST /api/quotes with power_data/network_data/controller_data/cover_intro/pdf_sections → 200 & GET returns all fields intact",
+    "GET /api/quotes/{id}/pdf → FAILS 500 when partial power_data attached (see backend_issues.critical)",
+    "Regression: POST /api/auth/login admin@logic.com, GET /api/auth/me, /controllers, /products, /dashboard/stats, /meta/roles (7 roles), /engineering/structural — all 200"
+  ],
+  "verified_ui_flows": [
+    "Login admin@logic.com/admin123 → redirects to dashboard",
+    "/configurator: all 10+ new testids present (pitch-select, mode-dimensions/matrix/resolution-btn, env-indoor/outdoor-btn, controller-select, undo-btn, redo-btn, grand-total-display, item-desc/qty/price/remove-N × 7 items)",
+    "BOM edit: item-qty-0 = 99 changed grand total ₹25,18,710 → ₹1,10,94,950; undo-btn restored to ₹25,18,710",
+    "Configurator save populates localStorage 'logic-led:last-config' (verified via page.evaluate)",
+    "/engineering shows 'Auto-loaded from configurator: LOGIC Transparent P3.9 · 4×5 · 4 kW' banner",
+    "Power tab: 10 export-toggle-{current,mcb,rccb,cable,vdrop,sockets,earthing,ups,generator,monthly} checkboxes; MCB '1 × 32A' (IS 60898); RCCB 25 A 30mA; cable 2.5 sqmm",
+    "Network tab: Matrix 4×5, Resolution 1333×833 px, Total Pixels 1,110,389; LOOPING STRATEGY · VERTICAL; net-env-indoor / net-env-outdoor toggles present",
+    "Structural tab: mount-wall_mount-btn / mount-hanging-btn / mount-floor_stand-btn visual cards; structural-recommendation shows 'MS angle frame (50×50×5mm) bolted to wall'",
+    "/controllers: 9 controller cards + planner-pixels-input/planner-run-btn; new-controller-btn opens dialog with controller-model-input + save-controller-btn; edit-controller-{MCTRL660,VX600,H2,VX1000,H5,VX16S,MX20,MX40 Pro,CX40} all present"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_iteration5.py",
+    "/app/test_reports/pytest/iteration5_results.xml"
+  ],
+  "action_items": [
+    "FIX pdf_gen.py:185 — wrap `power.get('monthly_cost_inr')` (and similar numeric fields 172-186) in `or 0` before format: `f\"₹ {power.get('monthly_cost_inr') or 0:,.0f}\"`. Same defensive treatment needed for lines that format current_max_a, current_typ_a, voltage_drop_v, ups_kva, generator_kva, monthly_kwh, annual_cost_inr, etc. This ensures PDF generation is robust when UI attaches only partial engineering payloads.",
+    "(Carried from iter-4, still present) server.py refers to legacy roles 'product_manager' (create/update/delete/duplicate product), 'sales_manager' (delete customer/partner/quote), 'sales_executive' (quote visibility scope at line 291). These roles no longer exist after migration — admin cannot manage products, sales cannot delete their quotes."
+  ],
+  "critical_code_review_comments": [
+    "pdf_gen.py:172-186 — many numeric f-string formats assume the power/network dict has all keys. Any missing key or None value throws TypeError at PDF generation time. Add `or 0` fallback OR use a helper `def fmt(v, spec): return format(v or 0, spec)` for all these fields.",
+    "pdf_gen.py — sections default silently to {} when pdf_sections is None; ok, but the section keys ('power','network','spec_sheet','cover') should be documented in models.py for the frontend contract.",
+    "network_engine.py — 'capacity exceeded' triggers only on `col_pixels > pixels_per_port` (i.e. >650k default). For real-world large walls (25+ cabinets/column, 100k+ pixels/cab) the split-in-2 heuristic may still exceed port capacity — consider generalising to ceil(col_pixels / pixels_per_port) loops per column instead of hard-coded 2.",
+    "power_engine.py — for very high current (>32×20 A = 640 A) the combo becomes many parallel 32A MCBs (e.g. 20 × 32A) which is unrealistic; a distribution board split note would help.",
+    "server.py:291 — `if user['role'] == 'sales_executive'` is dead code post-migration; quotes visibility is now not scoped for sales/dealer/presales roles, i.e. everyone sees everyone's quotes.",
+    "server.py legacy role guards at lines 122/130/137/143/192/237/337 still reference 'product_manager' and 'sales_manager' — these roles were removed in iter-4 migration."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration5.py (new — 20 pytest cases across power/network/controllers CRUD/quotes-extended/PDF/regression)"
+  ],
+  "success_rate": {"backend": "95% (19/20)", "frontend": "100% (all requested testids + flows verified)"},
+  "test_credentials": "admin@logic.com/admin123 (super_admin) — verified working",
+  "seed_data_creation": "Test controllers TEST_ITER5_* and TEST_DEL_* auto-cleaned via fixture teardown. Test quote TEST_ITER5_QUOTE persisted (harmless, has TEST_ prefix).",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All iteration-5 features except PDF-with-partial-data are working. Only bug: pdf_gen.py raises 500 on None numeric field. Once fixed with `or 0` fallback, /api/quotes/{id}/pdf will pass. UI is fully wired — all testids from the review request are correctly present. LocalStorage bridge from Configurator to Engineering auto-load is confirmed working. Novastar controller catalog has 9 seeded entries (MCTRL660/VX600/H2/VX1000/H5/VX16S/MX20/MX40 Pro/CX40). BOM undo/redo is client-side only (no backend endpoints) and confirmed working by observing grand-total-display value roundtrip.",
+  "rca_of_pdf_bug": "Repro: create quote with power_data={'mcb_combo':'1 × 32A','current_max_a':24,'voltage':400} (no monthly_cost_inr) → GET /api/quotes/{id}/pdf → 500. Root cause: pdf_gen.py:185 does `f'₹ {power.get(\"monthly_cost_inr\"):,.0f}'` — Python's format(None, ',.0f') raises TypeError. Fix: change to `f'₹ {power.get(\"monthly_cost_inr\") or 0:,.0f}'`, apply same pattern to lines 172-186 (all keys read from power/network dicts that are then f-formatted with `:,.0f` / `:,.2f`)."
+}

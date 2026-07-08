@@ -1,0 +1,39 @@
+{
+  "summary": "First-finish smoke test of LOGIC LED Configurator. Backend endpoints, auth, RBAC, configurator, quote creation, and PDF download all working. Only failure: /api/ai/recommend returns 500 due to Emergent LLM budget exceeded.",
+  "tested_scope": ["backend", "frontend", "auth", "integration"],
+  "passed": [
+    "POST /api/auth/login (admin & exec) returns access_token + role",
+    "GET /api/auth/me returns current user",
+    "GET /api/dashboard/stats 200 with counts (4 customers, 3 partners)",
+    "GET /api/products returns 8 seeded LOGIC products",
+    "GET /api/customers returns 4, GET /api/partners returns 3",
+    "POST /api/configure returns full wall calc (cabinets 3x4=12, res 1000x667, LED area 6m^2, power 2.4kW) + 9 BOQ items, grand_total 1,601,850",
+    "POST /api/quotes creates quote LOGIC/Q/2026/0001; sets sales_person from JWT",
+    "GET /api/quotes/{id}/pdf downloads valid PDF (filename LOGIC_Q_2026_0001.pdf)",
+    "GET /api/settings and /api/reports/sales 200",
+    "RBAC: sales_executive sees only own quotes (0 vs admin's 1); POST /api/products by exec returns 403",
+    "Frontend login → dashboard renders 6 KPI cards + monthly-trend, quote-status, indoor/outdoor charts",
+    "Products page (data-testid=products-page) renders with new-product-btn",
+    "Configurator: product-select shows 8 options, width/height inputs work, compute-btn triggers /configure, live-preview and boq-table render",
+    "Unit toggle (mm/m) present and clickable",
+    "Save Quote flow: quote-customer-select shows 4 options, save-quote-btn navigates to /quotes/{id} detail page with BOM table, PDF, Excel, and status-select buttons visible",
+    "PDF download from UI works (LOGIC_Q_2026_0001.pdf downloaded)",
+    "Logout button clears session and returns to /login"
+  ],
+  "failed": [
+    {
+      "area": "AI integration (backend)",
+      "issue": "POST /api/ai/recommend returns 500. Root cause from backend logs: emergentintegrations.llm.chat.ChatError → litellm.BadRequestError: OpenAIException - Budget has been exceeded! Current cost: 0.0, Max budget: 0.0. Same failure will affect /api/ai/proposal-summary.",
+      "evidence": "curl POST /api/ai/recommend → HTTP 500 'Internal Server Error'; /var/log/supervisor/backend.err.log shows Budget exceeded error at server.py:430 (chat.send_message).",
+      "priority": "HIGH"
+    }
+  ],
+  "action_items": [
+    "The EMERGENT_LLM_KEY in /app/backend/.env has a 0 budget cap. Ask user to provide a funded EMERGENT_LLM_KEY (or top-up existing) so /api/ai/recommend and /api/ai/proposal-summary can call Claude Sonnet 4.5 successfully.",
+    "Note: Dashboard route in App.js is '/' (root), not '/dashboard'. If PRD expects /dashboard URL, add route alias; otherwise cosmetic only.",
+    "Optional: AI failures currently surface as HTTP 500 to UI; consider catching ChatError and returning friendly 503/402 with message."
+  ],
+  "success_rate": {"backend": "92%", "frontend": "100%"},
+  "retest_needed": true,
+  "full_testing_deferred": true
+}

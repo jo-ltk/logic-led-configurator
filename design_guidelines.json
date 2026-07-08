@@ -1,0 +1,108 @@
+{
+  "theme": "light",
+  "archetype": "4",
+  "design_philosophy": "Compassionate 'Calm Design', progressive disclosure, top-left quadrant focus for KPIs, functional color for status, modular UI.",
+  "colors": {
+    "light": {
+      "background": "#F9FAFB",
+      "surface": "#FFFFFF",
+      "surface_glass": "rgba(255, 255, 255, 0.7)",
+      "border": "#E5E7EB",
+      "text_primary": "#111827",
+      "text_secondary": "#6B7280",
+      "brand_accent": "#007AFF",
+      "brand_accent_hover": "#0056b3",
+      "success": "#10B981",
+      "warning": "#F59E0B",
+      "danger": "#EF4444"
+    },
+    "dark": {
+      "background": "#0A0A0A",
+      "surface": "#171717",
+      "surface_glass": "rgba(23, 23, 23, 0.6)",
+      "border": "#262626",
+      "text_primary": "#F9FAFB",
+      "text_secondary": "#9CA3AF",
+      "brand_accent": "#3B82F6",
+      "brand_accent_hover": "#60A5FA",
+      "success": "#34D399",
+      "warning": "#FBBF24",
+      "danger": "#F87171"
+    }
+  },
+  "typography": {
+    "heading_font": "Satoshi, sans-serif",
+    "body_font": "Manrope, sans-serif",
+    "scales": {
+      "h1": "text-4xl tracking-tight font-bold",
+      "h2": "text-2xl tracking-tight font-semibold",
+      "h3": "text-xl tracking-tight font-semibold",
+      "h4": "text-lg tracking-tight font-medium",
+      "body": "text-sm leading-relaxed",
+      "small": "text-xs tracking-wide text-secondary uppercase"
+    }
+  },
+  "spacing_and_layout": {
+    "container_padding": "p-6 md:p-8",
+    "widget_gap": "gap-6",
+    "border_radius": {
+      "card": "rounded-2xl",
+      "button": "rounded-lg",
+      "input": "rounded-lg"
+    }
+  },
+  "surfaces": {
+    "dashboard_card": "bg-white dark:bg-[#171717] border border-gray-200 dark:border-gray-800 shadow-sm rounded-2xl p-6",
+    "glass_header": "backdrop-blur-xl bg-white/70 dark:bg-black/60 border-b border-gray-200/50 dark:border-gray-800/50",
+    "sidebar": "bg-[#F9FAFB] dark:bg-[#0A0A0A] border-r border-gray-200 dark:border-gray-800"
+  },
+  "interactions": {
+    "hover_state": "transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:shadow-md",
+    "active_state": "active:scale-95",
+    "focus_state": "focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-all duration-200",
+      "secondary": "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 dark:bg-[#171717] dark:text-gray-200 dark:border-gray-700 dark:hover:bg-[#262626] transition-all duration-200"
+    },
+    "tables": {
+      "header": "bg-gray-50 dark:bg-[#171717] text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 py-3 px-4",
+      "row": "border-b border-gray-200 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-[#171717]/50 transition-colors"
+    },
+    "charts": {
+      "library": "recharts",
+      "tooltip": "bg-white dark:bg-[#171717] border border-gray-200 dark:border-gray-800 shadow-lg rounded-lg p-3 text-sm",
+      "grid": "stroke-gray-100 dark:stroke-gray-800 stroke-dasharray-3-3"
+    }
+  },
+  "media": {
+    "icons_library": "lucide-react",
+    "images": {
+      "login_background": "https://images.unsplash.com/photo-1616418625172-c607e16733ca?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA3MDR8MHwxfHNlYXJjaHw0fHxMRUQlMjB2aWRlbyUyMHdhbGwlMjBkaXNwbGF5fGVufDB8fHxibHVlfDE3ODI5OTczOTF8MA&ixlib=rb-4.1.0&q=85",
+      "empty_state_illustration": "https://images.unsplash.com/photo-1705693346612-a215b733c3d3?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA3MDR8MHwxfHNlYXJjaHwzfHxMRUQlMjB2aWRlbyUyMHdhbGwlMjBkaXNwbGF5fGVufDB8fHxibHVlfDE3ODI5OTczOTF8MA&ixlib=rb-4.1.0&q=85",
+      "avatars": [
+        "https://images.unsplash.com/photo-1560250097-0b93528c311a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzN8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBjb3Jwb3JhdGUlMjBwb3J0cmFpdCUyMGhlYWRzaG90fGVufDB8fHx8MTc4Mjk5NzM5Mnww&ixlib=rb-4.1.0&q=85",
+        "https://images.unsplash.com/photo-1685760259914-ee8d2c92d2e0?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzN8MHwxfHNlYXJjaHw0fHxwcm9mZXNzaW9uYWwlMjBjb3Jwb3JhdGUlMjBwb3J0cmFpdCUyMGhlYWRzaG90fGVufDB8fHx8MTc4Mjk5NzM5Mnww&ixlib=rb-4.1.0&q=85",
+        "https://images.unsplash.com/photo-1494790108377-be9c29b29330?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzN8MHwxfHNlYXJjaHwzfHxwcm9mZXNzaW9uYWwlMjBjb3Jwb3JhdGUlMjBwb3J0cmFpdCUyMGhlYWRzaG90fGVufDB8fHx8MTc4Mjk5NzM5Mnww&ixlib=rb-4.1.0&q=85"
+      ],
+      "company_logos": [
+        "https://images.unsplash.com/photo-1712903276855-845bb42e5df9?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzN8MHwxfHNlYXJjaHwzfHxjb21wYW55JTIwc3BvbnNvciUyMGxvZ28lMjB3aGl0ZSUyMGJhY2tncm91bmR8ZW58MHx8fHdoaXRlfDE3ODI5OTczOTF8MA&ixlib=rb-4.1.0&q=85",
+        "https://images.unsplash.com/photo-1712903276360-20f76efac6f9?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzN8MHwxfHNlYXJjaHwxfHxjb21wYW55JTIwc3BvbnNvciUyMGxvZ28lMjB3aGl0ZSUyMGJhY2tncm91bmR8ZW58MHx8fHdoaXRlfDE3ODI5OTczOTF8MA&ixlib=rb-4.1.0&q=85"
+      ]
+    }
+  },
+  "testing": {
+    "attributes": "All interactive and key informational elements MUST include data-testid attribute in kebab-case format based on their role."
+  },
+  "instructions_to_main_agent": [
+    "Use Shadcn UI for all complex components (tabs, dialogs, selects, date pickers) but heavily customize them to match the sleek Apple/Linear/Vercel aesthetic.",
+    "Implement a robust responsive layout with a sidebar navigation and a top sticky glassmorphism header.",
+    "Use Recharts for the 6+ charts, keeping grid lines faint and using a custom tooltip that matches the dashboard card styles.",
+    "The LED Videowall Configurator MUST feature a live SVG preview with subtle animations and dimension visualizers.",
+    "Ensure dark and light modes are seamlessly integrated using Tailwind 'dark:' variants.",
+    "Avoid generic layout borders. Utilize negative space and soft ambient drop shadows to separate visual layers.",
+    "Design sophisticated empty states using standard icon + text prompts to guide users.",
+    "DO NOT use generic sans fonts for headings. Default to Satoshi (or fallback to an available premium web font), and Manrope for body text."
+  ]
+}

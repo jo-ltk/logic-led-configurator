@@ -1,0 +1,56 @@
+{
+  "summary": "Iteration 3 focused on verifying user-requested changes: BOQ toggles, receiving-card removal, editable BOQ, sales-rep + partner selection on Configurator, customer/partner aggregates + drill-down drawers, and clickable Dashboard KPIs. Backend: 12/12 pytest cases pass. Frontend: all critical UI flows verified end-to-end via Playwright (Dashboard KPI navigation, Configurator BOQ, live recompute, sales-rep-disabled-for-executive, customer & partner drawers with linked-quote navigation).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Partners directory table", "issues": ["Partners table has 5 configured columns + 2 aggregate columns (Quotes, Value). On smaller viewports/columns can overflow horizontally without a scroll indicator. Not a bug, cosmetic only."]}
+    ]
+  },
+  "verified_endpoints": [
+    "POST /api/configure with include+spare_percent — receiving_card removed from default items",
+    "POST /api/configure with include toggles for mcb/ups/video_processor/etc — items list changes accordingly",
+    "POST /api/configure spare_percent=5 -> Spare Modules qty = ceil(total_cabinets*5/100)",
+    "GET /api/auth/users?role=sales_executive as sales_executive -> 200 (no longer 403)",
+    "GET /api/auth/users as admin -> returns super_admin + sales_manager + sales_executive",
+    "GET /api/customers -> rows include count/value/won aggregates",
+    "GET /api/partners -> rows include count/value/won aggregates",
+    "GET /api/customers/{id}/quotes -> filtered list, count matches aggregate",
+    "GET /api/partners/{id}/quotes -> filtered list",
+    "POST /api/quotes with sales_person_id_override as admin -> quote.sales_person_id/name reflect override",
+    "POST /api/quotes with sales_person_id_override as sales_executive -> override IGNORED, uses exec's own id"
+  ],
+  "verified_ui_flows": [
+    "Dashboard KPI cards (kpi-quotations/customers/partners/sales/area/pitch) wrapped in <Link>; hrefs = /quotes, /customers, /partners, /reports, /quotes, /products respectively",
+    "Configurator @ 4m x 2.25m: BOQ shows 8 default items (cabinet, controller, video_processor, mounting_frame, installation, power_signal_cabling, packing_transport, spare_modules). No 'Receiving Card'. MCB & UPS available via toggle (off by default)",
+    "Include toggles include-cabinet, include-controller, include-video_processor, include-mounting_frame, include-installation, include-power_signal_cabling, include-packing_transport, include-spare_modules, include-mcb, include-ups all present",
+    "Spare % input (spare-percent-input) present and functional; recompute reflects new qty",
+    "Editable BOQ: item-qty-0 edited (999) -> grand-total updated live (₹24,83,310 -> ₹10,87,63,550). gst-percent-input set to 28 -> grand-total updated. item-remove-0 removes row. add-item-btn appends custom row",
+    "quote-partner-select present with 'Direct (no partner)' + partner list",
+    "quote-rep-select for admin (super_admin): not disabled. For sales_executive: element has data-disabled attribute set (shadcn Select disabled) -> confirmed disabled per role",
+    "Customers page: 4 rows loaded, columns include Quotes count + Value. Clicking IIT Bombay row opens customer-detail-drawer showing 3 KPI cards (Quotations=2, Total Value=₹40,85,160, Won=0) and 2 linked quotes (LOGIC/Q/2026/0003 test, LOGIC/Q/2026/0001 T1 Smoke). Clicking linked-quote-{id} navigates to /quotes/{id}",
+    "Partners page: 3 rows loaded, partner-detail-drawer opens on row click (NorthStar AV shows 0 quotes/₹0 as expected)"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_iteration3.py",
+    "/app/test_reports/pytest/iteration3_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py list_customers/list_partners builds aggregates in-memory (fetches all quotes and defaultdict counter). Acceptable for current scale (<5000 quotes) but should be pushed into a MongoDB aggregation pipeline ($group) if volume grows.",
+    "Configurator.jsx line 122: `if (user) setSalesRepId(user.id);` is called inside the /auth/users .then() — this races with the useEffect dep [user] and can reset a manually chosen rep back to the current user whenever /auth/users refires. Consider guarding with `if (!salesRepId) setSalesRepId(user.id)`.",
+    "Configurator.jsx addCustomItem line 165 uses key='custom' for every added row — backend accepts it (models.py QuoteItem.key is Optional) but multiple 'custom' keys duplicated across rows could confuse future reporting. Consider auto-suffixing (custom-1, custom-2).",
+    "Directories.jsx CrudTable renders a single component for both Customers and Partners, so the aggregate columns (Quotes / Value) are appended after the resource-specific columns. Partners table now has 5+2 columns which can overflow horizontally without scroll indicator on narrow viewports (cosmetic only).",
+    "server.py line 306 `d.pop('sales_person_id_override', None)` is defensive but body.model_dump() has already included it into `d`, so it is popped anyway before insert — good. However, the schema QuoteCreate still declares sales_person_id_override, so the stored quote document will not contain this field after pop — verify by GET /quotes/{id} (it is stripped). ✅"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration3.py (new — 12 pytest cases)"
+  ],
+  "success_rate": {"backend": "100% (12/12)", "frontend": "100% (all listed flows verified)"},
+  "test_credentials": "admin@logic.com/admin123 (super_admin), exec@logic.com/exec123 (sales_executive) — both used and confirmed working",
+  "seed_data_creation": "None. Used existing seed data (8 products, 4 customers, 3 partners). Test-created quotes with prefix 'TEST_ITER3_' are cleaned up in test teardown.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "All iter-3 user-requested changes verified. Existing test quotes remain in DB (LOGIC/Q/2026/0001..0003) which is fine — expected per problem statement. AI budget issue from iteration_1 (POST /api/ai/recommend returning 402 due to EMERGENT_LLM_KEY budget) is still open but out of scope."
+}

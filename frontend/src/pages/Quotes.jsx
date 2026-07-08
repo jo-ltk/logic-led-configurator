@@ -19,7 +19,7 @@ export function QuotesList() {
   const load = useCallback(async () => {
     const url = status === "all" ? "/quotes" : `/quotes?status=${status}`;
     const { data } = await api.get(url);
-    setItems(data);
+    setItems(Array.isArray(data) ? data : []);
   }, [status]);
   useEffect(() => { load(); }, [load]);
 

@@ -54,11 +54,47 @@ const chartTooltipStyle = {
   labelStyle: { color: "hsl(var(--foreground))", fontWeight: 600 },
 };
 
+const EMPTY_STATS = {
+  total_quotations: 0,
+  total_customers: 0,
+  total_partners: 0,
+  total_sales_value: 0,
+  total_led_area: 0,
+  most_sold_pitch: "-",
+  most_sold_series: "-",
+  monthly_trend: [],
+  status_counts: {},
+  pitch_distribution: [],
+  indoor_outdoor: { indoor: 0, outdoor: 0, other: 0 },
+  salesperson_performance: [],
+  recent_quotes: [],
+};
+
+function normalizeStats(data) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return EMPTY_STATS;
+  return {
+    ...EMPTY_STATS,
+    ...data,
+    monthly_trend: Array.isArray(data.monthly_trend) ? data.monthly_trend : [],
+    status_counts: data.status_counts && typeof data.status_counts === "object" ? data.status_counts : {},
+    pitch_distribution: Array.isArray(data.pitch_distribution) ? data.pitch_distribution : [],
+    salesperson_performance: Array.isArray(data.salesperson_performance) ? data.salesperson_performance : [],
+    recent_quotes: Array.isArray(data.recent_quotes) ? data.recent_quotes : [],
+    indoor_outdoor: {
+      indoor: data.indoor_outdoor?.indoor ?? 0,
+      outdoor: data.indoor_outdoor?.outdoor ?? 0,
+      other: data.indoor_outdoor?.other ?? 0,
+    },
+  };
+}
+
 export default function Dashboard() {
   const [d, setD] = useState(null);
 
   useEffect(() => {
-    api.get("/dashboard/stats").then((r) => setD(r.data));
+    api.get("/dashboard/stats")
+      .then((r) => setD(normalizeStats(r.data)))
+      .catch(() => setD(EMPTY_STATS));
   }, []);
 
   if (!d) return (

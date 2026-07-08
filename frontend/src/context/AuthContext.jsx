@@ -18,7 +18,8 @@ export function AuthProvider({ children }) {
     (async () => {
       try {
         const { data } = await api.get("/auth/me");
-        setUser(data);
+        if (data && typeof data === "object" && data.id) setUser(data);
+        else setUser(false);
       } catch {
         setUser(false);
       }

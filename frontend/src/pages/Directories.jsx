@@ -19,8 +19,12 @@ function CrudTable({ resource, title, columns, emptyForm, testidPrefix, Icon, ex
   const [selected, setSelected] = useState(null);
   const [quotes, setQuotes] = useState([]);
 
+  useEffect(() => {
+    const loadRows = async () => setRows((await api.get(`/${resource}`)).data);
+    loadRows();
+  }, [resource]);
+
   const load = async () => setRows((await api.get(`/${resource}`)).data);
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
 
   const openNew = () => { setForm(emptyForm); setEditId(null); setOpen(true); };
   const openEdit = (r) => { setForm(r); setEditId(r.id); setOpen(true); };

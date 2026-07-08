@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api, money } from "@/lib/api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -85,9 +85,10 @@ export default function Engineering() {
 }
 
 function PowerPanel({ config }) {
+  const configWall = config?.wall;
   const [form, setForm] = useState({
-    power_max_kw: config?.wall?.power_max_kw ?? 15,
-    power_typical_kw: config?.wall?.power_typical_kw ?? 6,
+    power_max_kw: configWall?.power_max_kw ?? 15,
+    power_typical_kw: configWall?.power_typical_kw ?? 6,
     voltage: 230, phase: "single",
     daily_hours: 10, tariff_inr_kwh: 8.5, days_per_month: 30,
   });
@@ -101,23 +102,23 @@ function PowerPanel({ config }) {
   const toggle = (k) => setInclude((s) => ({ ...s, [k]: !s[k] }));
 
   useEffect(() => {
-    if (config?.wall) {
+    if (configWall) {
       setForm((f) => ({
         ...f,
-        power_max_kw: config.wall.power_max_kw,
-        power_typical_kw: config.wall.power_typical_kw,
+        power_max_kw: configWall.power_max_kw,
+        power_typical_kw: configWall.power_typical_kw,
       }));
     }
-  }, [config?.wall?.power_max_kw, config?.wall?.power_typical_kw]);
+  }, [configWall]);
 
-  const run = async () => {
+  const run = useCallback(async () => {
     setLoading(true);
     try { const { data } = await api.post("/engineering/power", form); setRes(data); }
     catch { toast.error("Failed"); }
     setLoading(false);
-  };
+  }, [form]);
 
-  useEffect(() => { run(); /* eslint-disable-next-line */ }, [form.power_max_kw, form.power_typical_kw, form.phase, form.voltage]);
+  useEffect(() => { run(); }, [run]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" data-testid="power-panel">
@@ -219,11 +220,11 @@ function NetworkPanel({ config }) {
     }
   }, [config]);
 
-  const run = async () => {
+  const run = useCallback(async () => {
     try { const { data } = await api.post("/engineering/network", form); setRes(data); }
     catch { toast.error("Failed"); }
-  };
-  useEffect(() => { run(); /* eslint-disable-next-line */ }, [form]);
+  }, [form]);
+  useEffect(() => { run(); }, [run]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" data-testid="network-panel">
@@ -311,11 +312,11 @@ function StructuralPanel({ config }) {
     }
   }, [config]);
 
-  const run = async () => {
+  const run = useCallback(async () => {
     try { const { data } = await api.post("/engineering/structural", form); setRes(data); }
     catch (e) { toast.error(e.response?.data?.detail || "Failed"); }
-  };
-  useEffect(() => { run(); /* eslint-disable-next-line */ }, [form]);
+  }, [form]);
+  useEffect(() => { run(); }, [run]);
 
   const MOUNTS = [
     { key: "wall_mount", label: "Wall Mount", Icon: Building2,

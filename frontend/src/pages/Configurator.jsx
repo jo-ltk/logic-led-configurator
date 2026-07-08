@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { api, money } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -174,7 +174,7 @@ export default function Configurator() {
     return { width: +width, height: +height, unit };
   }, [mode, width, height, unit, matrixX, matrixY, resolutionKey, currentProduct]);
 
-  const compute = async () => {
+  const compute = useCallback(async () => {
     if (!productId) return;
     setComputing(true);
     try {
@@ -189,9 +189,9 @@ export default function Configurator() {
       historyRef.current = { past: [], future: [] };
     } catch { toast.error("Failed to compute"); }
     finally { setComputing(false); }
-  };
+  }, [productId, effectiveDims, include, sparePercent]);
 
-  useEffect(() => { if (productId) compute(); /* eslint-disable-next-line */ }, [productId, include, sparePercent, mode, matrixX, matrixY, resolutionKey, width, height, unit]);
+  useEffect(() => { if (productId) compute(); }, [productId, compute]);
 
   // Auto-plan controller when we have result (unless manual)
   const [autoController, setAutoController] = useState(null);

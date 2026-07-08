@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api, money, STATUS_COLORS } from "@/lib/api";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
@@ -16,12 +16,12 @@ export function QuotesList() {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("all");
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const url = status === "all" ? "/quotes" : `/quotes?status=${status}`;
     const { data } = await api.get(url);
     setItems(data);
-  };
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [status]);
+  }, [status]);
+  useEffect(() => { load(); }, [load]);
 
   const filtered = items.filter((it) =>
     !q || it.quote_number.toLowerCase().includes(q.toLowerCase()) ||

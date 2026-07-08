@@ -1,54 +1,49 @@
-"""Emergent object storage integration."""
+"""MongoDB GridFS file storage."""
+import logging
 import os
 import uuid
-import requests
-import logging
 from datetime import datetime, timezone
+
+from bson import ObjectId
+from gridfs import GridFS
+from pymongo import MongoClient
+
 from db import db
 
-STORAGE_URL = "https://integrations.emergentagent.com/objstore/api/v1/storage"
 APP_NAME = "logic-led"
-_storage_key = None
 logger = logging.getLogger("uvicorn.error")
 
+_sync_client = None
 
-def init_storage() -> str | None:
-    global _storage_key
-    if _storage_key: return _storage_key
-    try:
-        key = os.environ.get("EMERGENT_LLM_KEY")
-        if not key: return None
-        r = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": key}, timeout=30)
-        r.raise_for_status()
-        _storage_key = r.json()["storage_key"]
-        logger.info("Storage initialized")
-        return _storage_key
-    except Exception as e:
-        logger.error(f"Storage init failed: {e}")
-        return None
+
+def _gridfs() -> GridFS:
+    global _sync_client
+    if _sync_client is None:
+        _sync_client = MongoClient(os.environ["MONGO_URL"])
+    return GridFS(_sync_client[os.environ["DB_NAME"]])
 
 
 def put_object(path: str, data: bytes, content_type: str) -> dict:
-    key = init_storage()
-    if not key: raise RuntimeError("Storage not initialized")
-    r = requests.put(
-        f"{STORAGE_URL}/objects/{path}",
-        headers={"X-Storage-Key": key, "Content-Type": content_type},
-        data=data, timeout=120,
+    fs = _gridfs()
+    file_id = fs.put(
+        data,
+        filename=path,
+        metadata={"content_type": content_type, "logical_path": path},
     )
-    r.raise_for_status()
-    return r.json()
+    return {"path": str(file_id), "size": len(data)}
 
 
 def get_object(path: str) -> tuple[bytes, str]:
-    key = init_storage()
-    if not key: raise RuntimeError("Storage not initialized")
-    r = requests.get(
-        f"{STORAGE_URL}/objects/{path}",
-        headers={"X-Storage-Key": key}, timeout=60,
-    )
-    r.raise_for_status()
-    return r.content, r.headers.get("Content-Type", "application/octet-stream")
+    fs = _gridfs()
+    try:
+        oid = ObjectId(path)
+    except Exception as exc:
+        raise FileNotFoundError(f"Invalid storage id: {path}") from exc
+
+    grid_out = fs.get(oid)
+    metadata = grid_out.metadata or {}
+    content_type = metadata.get("content_type", "application/octet-stream")
+    return grid_out.read(), content_type
 
 
 async def save_file_record(user_id: str, filename: str, storage_path: str,

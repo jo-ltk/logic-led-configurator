@@ -35,7 +35,7 @@ export function AIAssistant() {
           <Sparkles className="w-3 h-3"/> AI Powered
         </div>
         <h1 className="font-display text-3xl md:text-4xl font-bold tracking-tight">Videowall Advisor</h1>
-        <p className="text-sm text-muted-foreground mt-1">Describe the use case, get an expert product recommendation powered by Claude.</p>
+        <p className="text-sm text-muted-foreground mt-1">Describe the use case, get an expert product recommendation powered by OpenRouter.</p>
       </header>
 
       <Card className="p-6 rounded-2xl border-border space-y-4">

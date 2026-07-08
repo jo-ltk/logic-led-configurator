@@ -508,9 +508,9 @@ class AIRecInput(BaseModel):
 
 @api.post("/ai/recommend")
 async def ai_recommend(body: AIRecInput, user=Depends(get_current_user)):
+    from openrouter import chat_completion
+
     products = await db.products.find({"archived": False}, {"_id": 0}).to_list(50)
-    from emergentintegrations.llm.chat import LlmChat, UserMessage
-    key = os.environ["EMERGENT_LLM_KEY"]
     sys_msg = (
         "You are an expert LED videowall consultant for LOGIC LED Displays. "
         "Recommend the best product from the provided catalog for the customer's use case. "
@@ -526,14 +526,12 @@ async def ai_recommend(body: AIRecInput, user=Depends(get_current_user)):
         f"Indoor: {body.indoor}\nBudget: {body.budget_range_inr or 'flexible'}\n"
         f"Ambient light: {body.ambient_light or 'normal'}\n\nCatalog:\n{catalog}\n\nReturn only JSON."
     )
-    chat = LlmChat(api_key=key, session_id=f"rec-{user['id']}", system_message=sys_msg).with_model("anthropic", "claude-sonnet-4-6")
     try:
-        reply = await chat.send_message(UserMessage(text=prompt))
+        reply = await chat_completion(sys_msg, prompt)
+    except ValueError as e:
+        raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
-        msg = str(e)
-        if "Budget" in msg or "budget" in msg:
-            raise HTTPException(status_code=402, detail="AI budget exceeded. Please top up your Emergent LLM key in Profile → Universal Key.")
-        raise HTTPException(status_code=503, detail=f"AI service unavailable: {msg[:200]}")
+        raise HTTPException(status_code=503, detail=f"AI service unavailable: {str(e)[:200]}")
     import json, re
     text = reply if isinstance(reply, str) else str(reply)
     m = re.search(r"\{.*\}", text, re.DOTALL)
@@ -550,24 +548,22 @@ class AISummaryInput(BaseModel):
 
 @api.post("/ai/proposal-summary")
 async def ai_proposal_summary(body: AISummaryInput, user=Depends(get_current_user)):
+    from openrouter import chat_completion
+
     quote = await db.quotes.find_one({"id": body.quote_id}, {"_id": 0})
     if not quote: raise HTTPException(404, "Quote not found")
     product = await db.products.find_one({"id": quote["config"]["product_id"]}, {"_id": 0})
-    from emergentintegrations.llm.chat import LlmChat, UserMessage
-    key = os.environ["EMERGENT_LLM_KEY"]
     sys_msg = "You are a technical writer for LOGIC LED Displays. Write a professional executive summary for a videowall proposal in 4-6 sentences."
     prompt = (f"Project: {quote['project_name']}\nProduct: {product['name']}\n"
               f"Size: {quote['config']['total_width_mm']/1000:.2f}m × {quote['config']['total_height_mm']/1000:.2f}m\n"
               f"Resolution: {quote['config']['resolution_w']}×{quote['config']['resolution_h']}\n"
               f"Cabinets: {quote['config']['total_cabinets']}\nTotal: INR {quote['grand_total']:,.0f}")
-    chat = LlmChat(api_key=key, session_id=f"sum-{body.quote_id}", system_message=sys_msg).with_model("anthropic", "claude-sonnet-4-6")
     try:
-        text = await chat.send_message(UserMessage(text=prompt))
+        text = await chat_completion(sys_msg, prompt)
+    except ValueError as e:
+        raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
-        msg = str(e)
-        if "Budget" in msg or "budget" in msg:
-            raise HTTPException(status_code=402, detail="AI budget exceeded. Please top up your Emergent LLM key.")
-        raise HTTPException(status_code=503, detail=f"AI service unavailable: {msg[:200]}")
+        raise HTTPException(status_code=503, detail=f"AI service unavailable: {str(e)[:200]}")
     return {"summary": text if isinstance(text, str) else str(text)}
 
 
@@ -903,44 +899,10 @@ class RenderInput(BaseModel):
 
 @api2.post("/ai/render")
 async def ai_render(body: RenderInput, user=Depends(get_current_user)):
-    import base64
-    from emergentintegrations.llm.chat import LlmChat, UserMessage
-    scene_desc = SCENE_TEMPLATES.get(body.scene, body.scene)
-    prompt = (
-        f"Ultra-realistic photograph of {scene_desc}. Centered on the main wall is a large, "
-        f"ultra-bright LED videowall (approximately {body.wall_width_m:.1f}m wide × "
-        f"{body.wall_height_m:.1f}m tall) displaying a beautiful abstract "
-        f"blue-and-purple corporate visual. The videowall is razor-thin bezel, edges perfectly "
-        f"flush, showing brilliant HDR content. Professional architectural photography, "
-        f"cinematic lighting, 8K, sharp focus, wide-angle. "
-        f"{body.extra_prompt or ''}"
+    raise HTTPException(
+        status_code=503,
+        detail="AI image renders are not available in this deployment. Text AI features use OpenRouter.",
     )
-    key = os.environ["EMERGENT_LLM_KEY"]
-    chat = LlmChat(api_key=key, session_id=f"render-{user['id']}-{uuid.uuid4()}",
-                   system_message="You generate photorealistic architectural renders.")
-    chat.with_model("gemini", "gemini-3.1-flash-image-preview").with_params(modalities=["image", "text"])
-    try:
-        text, images = await chat.send_message_multimodal_response(UserMessage(text=prompt))
-    except Exception as e:
-        msg = str(e)
-        if "Budget" in msg or "budget" in msg:
-            raise HTTPException(402, "AI budget exceeded. Top up Emergent LLM key.")
-        raise HTTPException(503, f"AI render failed: {msg[:200]}")
-    if not images:
-        raise HTTPException(500, "No image returned")
-    img = images[0]
-    data = base64.b64decode(img["data"])
-    ct = img.get("mime_type", "image/png")
-    ext = "png" if "png" in ct else "jpg"
-    path = f"{APP_NAME}/renders/{user['id']}/{uuid.uuid4()}.{ext}"
-    try:
-        result = put_object(path, data, ct)
-        rec = await save_file_record(user["id"], f"render-{body.scene}.{ext}", result["path"], ct, len(data), "render")
-        return {"file_id": rec["id"], "url": f"/api/files/{rec['id']}", "scene": body.scene, "prompt": prompt}
-    except Exception:
-        # fallback: return base64 inline
-        b64 = base64.b64encode(data).decode()
-        return {"data_url": f"data:{ct};base64,{b64}", "scene": body.scene, "prompt": prompt}
 
 
 # --- AI Content Generator ---
@@ -963,21 +925,18 @@ class ContentInput(BaseModel):
 
 @api2.post("/ai/content")
 async def ai_content(body: ContentInput, user=Depends(get_current_user)):
-    from emergentintegrations.llm.chat import LlmChat, UserMessage
+    from openrouter import chat_completion
+
     kind = CONTENT_TYPES.get(body.content_type)
     if not kind: raise HTTPException(400, "Unknown content_type")
     sys = f"You are a technical + marketing writer for LOGIC LED Displays. {kind} Keep tone: {body.tone}."
     prompt = f"Context provided by user:\n{body.context}\n\nWrite the deliverable now."
-    key = os.environ["EMERGENT_LLM_KEY"]
-    chat = LlmChat(api_key=key, session_id=f"content-{user['id']}-{uuid.uuid4()}",
-                   system_message=sys).with_model("anthropic", "claude-sonnet-4-6")
     try:
-        text = await chat.send_message(UserMessage(text=prompt))
+        text = await chat_completion(sys, prompt)
+    except ValueError as e:
+        raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
-        msg = str(e)
-        if "Budget" in msg or "budget" in msg:
-            raise HTTPException(402, "AI budget exceeded.")
-        raise HTTPException(503, f"AI failed: {msg[:200]}")
+        raise HTTPException(status_code=503, detail=f"AI failed: {str(e)[:200]}")
     return {"content": text if isinstance(text, str) else str(text), "type": body.content_type}
 
 
